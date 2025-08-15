@@ -1,0 +1,2436 @@
+---
+title: "HW1"
+author: "Gharehmohammadzadehghashghaei, Miciakova, Zohoorianmoftakharkhodaparast"
+date: "2025-02-18"
+output: 
+  html_document:
+    theme: readable
+    highlight: tango
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(echo = FALSE,message = FALSE)
+```
+
+
+
+```{r}
+## Load Necessary Libraries
+library(dplyr)       # Data manipulation
+library(e1071)       # Support Vector Machine (SVM)
+library(caret)       # For model training and evaluation
+library(ggplot2)     # Visualization
+library(randomForest) # Random Forest Classifier
+library(MASS)        # Logistic Regression
+library(coin)        # Permutation test
+library(gridExtra)   # Arranging multiple plots
+library(pROC)       # For AUC calculation
+library(nnet)       # Multinomial logistic regression
+library(ipred)      # Included nnet
+library(knitr)
+library(glmnet)
+
+
+```
+
+
+### Part 1
+
+**Problem Statement**  
+We have a binary response \(Y \in \{0,1\}\) and a single predictor \(X \in \mathbb{R}\). The conditional distributions and priors are:
+
+- \(X \mid Y=0 \sim \text{Unif}(-3,1)\)
+- \(X \mid Y=1 \sim \text{Unif}(-1,3)\)
+- \(\Pr(Y=0) = \Pr(Y=1) = \tfrac{1}{2}\)
+
+We want to find the **Bayes classification rule** \(\eta^*(x)\), i.e., the rule that minimizes the misclassification probability under the 0/1 loss.
+
+---
+
+
+#### 1. Bayes classification rule \( \eta^*(x) \)
+
+\((Y, X)\) are random variables with \( Y \in \{0,1\} \) and \( X \in \mathbb{R} \). Suppose that
+
+\[
+(X \mid Y = 0) \sim \text{Unif}(-3,1) \quad \text{and} \quad (X \mid Y = 1) \sim \text{Unif}(-1,3)
+\]
+
+Further suppose that \( \mathbb{P}(Y = 0) = \mathbb{P}(Y = 1) = \frac{1}{2} \).
+
+---
+
+The regression function is defined as follows:
+
+\[
+r(x) = \mathbb{E}(Y \mid X = x) = \mathbb{P}(Y = 1 \mid X = x) = \frac{\pi_1 f_1(x)}{\pi_1 f_1(x) + (1 - \pi_1) f_0(x)}
+\]
+
+where \( \pi_1 = \mathbb{P}(Y = 1) \), \( f_1(x) = f(x \mid Y = 1) \) and \( f_0(x) = f(x \mid Y = 0) \).
+
+The Bayes classification rule \( \eta^*(x) \) is defined as:
+
+\[
+\eta^*(x) =
+\begin{cases}
+1 & \text{if } \mathbb{P}(Y = 1 \mid X = x) > \mathbb{P}(Y = 0 \mid X = x) \\
+0 & \text{otherwise}
+\end{cases}
+\]
+
+\[
+= \begin{cases}
+1 & \text{if } \pi_1 f_1(x) > (1 - \pi_1) f_0(x) \\
+0 & \text{otherwise}
+\end{cases}
+\]
+
+Since we have \( \pi_1 = \pi_0 = \frac{1}{2} \):
+
+\[
+\eta^*(x) =
+\begin{cases}
+1 & \text{if } f_1(x) > f_0(x) \\
+0 & \text{otherwise}
+\end{cases}
+\]
+
+---
+
+
+\[
+f_1(x) =
+\begin{cases}
+\frac{1}{4} & \text{if } -1 \leq x \leq 3 \\
+0 & \text{otherwise}
+\end{cases}
+\]
+
+and 
+
+\[
+f_0(x) =
+\begin{cases}
+\frac{1}{4} & \text{if } -3 \leq x \leq 1 \\
+0 & \text{otherwise}
+\end{cases}
+\]
+
+---
+
+
+- \( x < -3 \):
+
+  \[
+  f_1(x) = 0, \quad f_0(x) = 0 \Rightarrow f_1(x) \not> f_0(x) \Rightarrow \eta^*(x) = 0
+  \]
+
+- \( -3 \leq x < -1 \):
+
+  \[
+  f_1(x) = 0, \quad f_0(x) = \frac{1}{4} \Rightarrow f_1(x) \not> f_0(x) \Rightarrow \eta^*(x) = 0
+  \]
+
+- \( -1 \leq x \leq 1 \):
+
+  \[
+  f_1(x) = \frac{1}{4}, \quad f_0(x) = \frac{1}{4} \Rightarrow f_1(x) \not> f_0(x) \Rightarrow \eta^*(x) = 0
+  \]
+
+- \( 1 < x \leq 3 \):
+
+  \[
+  f_1(x) = \frac{1}{4}, \quad f_0(x) = 0 \Rightarrow f_1(x) > f_0(x) \Rightarrow \eta^*(x) = 1
+  \]
+
+- \( x > 3 \):
+
+  \[
+  f_1(x) = 0, \quad f_0(x) = 0 \Rightarrow f_1(x) \not> f_0(x) \Rightarrow \eta^*(x) = 0
+  \]
+
+---
+
+### Final Bayes Classification Rule:
+
+\[
+\eta^*(x) =
+\begin{cases}
+1 & \text{if } 1 < x \leq 3 \\
+0 & \text{otherwise}
+\end{cases}
+\]
+
+---
+
+**Hence, the Bayes classification rule is to predict** \(Y=1\) **if** \(x > -1\) **and** \(Y=0\) **otherwise.**
+
+
+
+<hr style="margin: 40px 0;">
+
+
+**Problem Statement**  
+2. Simulate \( n = 1000 \) data from the joint data model \( p(y, x) = p(x \mid y) \cdot p(y) \) described above, and then:
+
+- Plot the data (or a subset for clarity) together with the regression function \( r(x) \) that defines \( \eta^{\star}(x) \).
+- Evaluate the performance of the Bayes Classifiers \( \eta^{\star}(x) \) on this simple (only 1 feature!) data.
+- Apply any other practical classifier of your choice to these data and comparatively comment on its performance (with respect to those of the Bayes classifiers). Of course, those \( n \) training data should be used for training and validation too (in case there are tuning parameters).
+
+
+
+
+
+- We choose \( n = 1000 \) as our sample size.
+
+- The variable \( \mathbf{Y} \) is generated from a Bernoulli distribution with probability 0.5, meaning \( \mathbf{Y} \) takes the value 0 or 1 with equal likelihood.
+
+
+- We create a numeric vector **x** to store our predictor variable.
+
+- For each observation *i*:
+  - If \( Y[i] = 0 \), then \( X[i] \) is drawn from a **Uniform**\((-3,1)\) distribution.
+  - If \( Y[i] = 1 \), then \( X[i] \) is drawn from a **Uniform**\((-1,3)\) distribution.
+
+- This reflects the joint model \( p(x,y) = p(y) p(x \mid y) \) where:
+  - \( p(y) = 0.5 \)
+  - \( p(x \mid y = 0) \sim \text{Uniform}(-3,1) \)
+  - \( p(x \mid y = 1) \sim \text{Uniform}(-1,3) \)
+
+and then we show the results:
+
+```{r echo=FALSE}
+
+set.seed(42)  # For reproducibility
+
+n <- 1000
+
+# Generate Y ~ Bernoulli(0.5)
+Y <- rbinom(n, size = 1, prob = 0.5)
+
+# Generate X given Y:
+#   If Y = 0: X ~ Unif(-3, 1)
+#   If Y = 1: X ~ Unif(-1, 3)
+X <- numeric(n)
+for(i in seq_len(n)) {
+  if(Y[i] == 0) {
+    X[i] <- runif(1, min = -3, max = 1)
+  } else {
+    X[i] <- runif(1, min = -1, max = 3)
+  }
+}
+
+head(X, 10)
+
+```
+
+
+#### 1. Choosing the Sample Size
+- You selected a sample size of \( n = 1000 \). 
+- This means that you will generate a dataset containing 1000 observations.
+
+#### 2. Generating the Variable \( \mathbf{Y} \)
+- You defined a random variable \( \mathbf{Y} \) that follows a **Bernoulli distribution**.
+- A Bernoulli distribution is a discrete probability distribution where a random variable takes only two possible values: **0** or **1**.
+
+#### 3. Setting the Probability Parameter
+- You set the probability parameter of the Bernoulli distribution to **0.5**.
+- This means that each observation of \( \mathbf{Y} \) has an equal likelihood of being **0** or **1**.
+- In other words:
+  - \( P(Y = 1) = 0.5 \)
+  - \( P(Y = 0) = 0.5 \)
+
+#### Conclusion
+- Since the probability is **0.5**, the generated data will be evenly split between **0s** and **1s** on average.
+
+
+```{r echo=FALSE}
+r_func <- function(x) {
+  if(x < -1) {
+    return(0)
+  } else if(x <= 1) {
+    return(0.5)
+  } else {
+    return(1)
+  }
+}
+
+# Create a grid of x-values and compute r(x)
+x_grid <- seq(-3, 3, length.out = 500)
+r_vals <- sapply(x_grid, r_func)
+
+# Plot a subset of data points (200 points) for clarity
+set.seed(42)  # Ensure reproducibility for the subset selection
+idx_subset <- sample(seq_len(n), 200)
+X_sub <- X[idx_subset]
+Y_sub <- Y[idx_subset]
+
+# Plot the data points: blue for Y = 0, red for Y = 1
+plot(X_sub, Y_sub,
+     col = ifelse(Y_sub == 1, "red", "blue"),
+     pch = 19, xlab = "X", ylab = "Y",
+     main = "Data (Subset) + Regression Function r(x)",
+     xlim = c(-3, 3), ylim = c(-0.2, 1.2))
+
+# Add the regression function as a dashed line
+lines(x_grid, r_vals, lty = 2, lwd = 2)
+
+legend("topright", legend = c("Y = 0", "Y = 1", "r(x)"),
+       col = c("blue", "red", "black"),
+       pch = c(19, 19, NA), lty = c(NA, NA, 2), lwd = c(NA, NA, 2))
+
+
+```
+
+
+### Plot Summary
+
+#### Stepwise Regression Function \( r(x) \)
+- The black dashed line suggests a **stepwise function**, indicating that the probability of \( Y = 1 \) changes abruptly at certain values of \( X \).
+- This implies a **piecewise constant estimation** of \( P(Y = 1 | X) \), which is common in **non-parametric methods like decision trees**.
+
+#### Classification Decision
+- For **low values of \( X \)** (e.g., \( X < -1 \)), most of the points are **blue (Y = 0)**, meaning the probability of \( Y = 1 \) is low.
+- As \( X \) increases (e.g., around \( X = -1 \)), the probability shifts, and more **red points (Y = 1)** appear, indicating a higher probability of \( Y = 1 \).
+- The stepwise function adjusts its prediction based on **changes in the observed data distribution**.
+
+- The regression function \( r(x) \) suggests that the relationship between \( X \) and \( Y \) is highly **non-linear**.
+- Instead of a smooth probability curve (like logistic regression), a **stepwise approach** is used to estimate \( P(Y = 1 | X) \).
+- This method is common in **classification trees, histogram-based estimators, or non-parametric regression models**.
+
+
+<hr style="margin: 40px 0;">
+
+
+#### 1. Definition of `bayes_classifier`
+
+- This function takes a single numeric input `x`.
+- It applies a simple decision rule:
+  - If \( x < 0 \), predict the class as `0`.
+  - Otherwise (i.e., \( x \ge 0 \)), predict the class as `1`.
+- In many examples, this threshold at \( x = 0 \) is considered the “Bayes” decision boundary if the data suggests that’s the optimal split for minimizing misclassification.
+
+---
+
+#### 2. Applying the Classifier to the Dataset
+
+- Here, `x` is a vector of feature values.
+- `sapply(x, bayes_classifier)` applies the `bayes_classifier` function to each element of `x`.
+- The result is a vector of predicted classes, stored in `y_pred_bayes`.
+
+---
+
+#### 3. Calculating the Misclassification Rate
+
+- `y_pred_bayes != Y` creates a logical vector (TRUE if the prediction differs from the true label, FALSE otherwise).
+- `mean(y_pred_bayes != Y)` computes the proportion of misclassified observations.
+- `error_bayes` is the overall misclassification rate for this threshold-based classifier.
+- Finally, the `cat` function prints the result.
+
+---
+
+#### Result:
+
+- The misclassification rate is **23.9%**.
+- This suggests that the decision rule \( x < 0 \to 0 \) and \( x \ge 0 \to 1 \) incorrectly classifies about **23.9%** of the observations.
+- Despite being called the “Bayes classifier” in this context (often meaning the theoretically optimal rule under certain assumptions), the data may have enough overlap or noise such that nearly one in four observations are misclassified by this simple threshold rule.
+
+
+```{r echo=FALSE}
+bayes_classifier <- function(x) {
+  if(x <= 1) {
+    return(0)
+  } else {
+    return(1)
+  }
+}
+
+# Apply the Bayes classifier to the entire dataset
+y_pred_bayes <- sapply(X, bayes_classifier)
+error_bayes <- mean(y_pred_bayes != Y)
+cat("Bayes classifier misclassification rate:", error_bayes, "\n")
+```
+
+<hr style="margin: 40px 0;">
+
+
+#### Data Splitting (70% train, 30% test)
+
+`train_idx = sample(seq_len(n), size = round(0.7 * n))` randomly selects 70% of the data indices (from 1 to n) to be in the training set.  
+`X_train`, `Y_train` are the features and labels for the training set; `X_test`, `Y_test` are the remaining 30% for testing.
+
+---
+
+#### Logistic Regression Model
+
+A data frame `df_train` is created with the training feature (`X_train`) and response (`Y_train`).  
+`glm(Y ~ X, data = df_train, family = binomial)` fits a logistic regression model, where `Y` is the binary outcome and `X` is the predictor. The `family = binomial` option specifies a logistic link.
+
+---
+
+#### Predicting on the Test Set
+
+A data frame `df_test` is created from the test features `X_test`.  
+`predict(logreg, newdata = df_test, type = "response")` obtains the predicted probabilities \(\hat{P}(Y=1 \mid X)\) from the logistic model.  
+`Y_pred_test = (Y_prob_test >= 0.5)` converts probabilities to 0/1 classifications using the 0.5 threshold.  
+`logreg_err = mean(Y_pred_test != Y_test)` computes the misclassification rate for the logistic regression on the test set.
+
+---
+
+#### Bayes Classifier Predictions
+
+`Y_pred_bayes_test = sapply(X_test, bayes_rule)` applies a custom function `bayes_rule` to each value in `X_test`. This function encodes the theoretical Bayes rule (e.g., based on uniform distributions, we classify as 1 if \(-1 \le x < 3\), and 0 otherwise).  
+`bayes_err_test = mean(Y_pred_bayes_test != Y_test)` computes the misclassification rate for the Bayes classifier.
+
+---
+
+#### Comparing Results
+
+The code prints out the misclassification rates for both models:
+- **Logistic Regression misclassification rate (test):** approximately `0.243333` (24.33%).  
+- **Bayes classifier misclassification rate (test):** approximately `0.216667` (21.67%).
+
+
+#### What do the results mean?
+
+The Bayes classifier, derived from the true underlying distributions (Uniform(-3,1) vs. Uniform(-1,3)), represents the theoretical *optimal* decision rule under those assumptions.
+
+The logistic regression model, while flexible, is still a **parametric** method that estimates probabilities from finite data. It may not perfectly capture the true boundary without sufficient data or correct model specification.
+
+Consequently, we see that the Bayes classifier achieves a lower misclassification rate (around **21.7%**) compared to the logistic regression (around **24.3%**). This difference illustrates the advantage of knowing the true distributional assumptions in advance (Bayes rule) versus estimating the model from data (logistic regression).
+
+
+```{r echo=FALSE}
+# Perform a 70-30 train/test split
+train_idx <- sample(seq_len(n), size = round(0.7 * n))
+X_train <- X[train_idx]
+Y_train <- Y[train_idx]
+X_test  <- X[-train_idx]
+Y_test  <- Y[-train_idx]
+
+# Fit logistic regression using the training data
+df_train <- data.frame(X = X_train, Y = Y_train)
+logreg <- glm(Y ~ X, data = df_train, family = binomial)
+
+# Predict on the test data
+df_test <- data.frame(X = X_test)
+y_prob_test <- predict(logreg, newdata = df_test, type = "response")
+y_pred_test <- ifelse(y_prob_test > 0.5, 1, 0)
+logreg_err <- mean(y_pred_test != Y_test)
+cat("Logistic Regression misclassification rate (test):", logreg_err, "\n")
+
+# Compare with the Bayes classifier on the test set
+y_pred_bayes_test <- sapply(X_test, bayes_classifier)
+bayes_err_test <- mean(y_pred_bayes_test != Y_test)
+cat("Bayes classifier misclassification rate (test):", bayes_err_test, "\n")
+```
+
+<hr style="margin: 60px 0;">
+
+
+
+**Problem Statement**  
+
+Since you are simulating the data, you can actually see what happens in repeated sampling. Hence, repeat the sampling
+M = 10000 times keeping n = 1000 fixed (a simple for-loop will do it), and redo the comparison. Who’s the best now?
+Comment.
+
+
+
+#### Initializing the Simulation**
+- `set.seed(123)`: Ensures that the results are reproducible by setting a fixed seed for the random number generator.
+- `M <- 1000`: Specifies the number of Monte Carlo replications (i.e., the experiment is repeated 1000 times).
+- `n <- 1000`: Defines the sample size for each replication (i.e., each dataset contains 1000 observations).
+
+---
+
+#### Creating Storage for Misclassification Errors**
+- `err_bayes_vec`: Stores the misclassification rates for the Bayes classifier.
+- `err_logreg_vec`: Stores the misclassification rates for logistic regression.
+
+---
+
+#### Monte Carlo Replications Loop**
+- The loop runs **M = 1000** times, each time generating a new dataset and computing classification errors.
+
+---
+
+### Simulating Data**
+- `Y <- rbinom(n, size = 1, prob = 0.5)`: Generates **binary class labels** \( Y \sim \text{Bernoulli}(0.5) \), meaning \( Y \) is either 0 or 1 with equal probability.
+- `X` is generated according to the conditional distributions:
+  - If \( Y = 0 \), \( X \sim \text{Uniform}(-3,1) \).
+  - If \( Y = 1 \), \( X \sim \text{Uniform}(-1,3) \).
+- These distributions match the problem setup.
+
+---
+
+#### Evaluating the Bayes Classifier**
+- `bayes_classifier`: A function (not shown in your script) that implements the Bayes classification rule.
+- `sapply(X, bayes_classifier)`: Applies the Bayes classifier to each \( X \) to get predicted labels.
+- `err_bayes`: Computes the proportion of misclassified points.
+
+---
+
+#### Train-Test Split for Logistic Regression**
+- **70-30 split**: 70% of the data is used for training and 30% for testing.
+- `train_idx <- sample(seq_len(n), size = round(0.7 * n))`: Randomly selects indices for training.
+- `X_train`, `Y_train`: Training set.
+- `X_test`, `Y_test`: Testing set.
+
+---
+
+#### Training the Logistic Regression Model**
+- `glm(Y ~ X, data = df_train, family = binomial)`: Trains a logistic regression model where \( Y \) is the dependent variable and \( X \) is the predictor.
+
+---
+
+#### Making Predictions on the Test Set**
+- `predict(logreg, newdata = df_test, type = "response")`: Computes predicted probabilities for \( Y = 1 \).
+- `ifelse(y_prob_test > 0.5, 1, 0)`: Converts probabilities to class predictions.
+- `err_logreg`: Calculates the logistic regression misclassification rate.
+
+---
+
+#### Storing the Misclassification Errors**
+- Saves the misclassification rates for each iteration.
+
+---
+
+#### the Results**
+- Computes the **mean misclassification rate** for both classifiers over 1000 simulations.
+- The **Bayes classifier** represents the theoretical minimum error.
+- The **logistic regression** error reflects practical model performance.
+
+---
+
+#### Visualizing the Results**
+- **Boxplot Comparison**:
+  - `err_bayes_vec`: Distribution of Bayes classifier errors.
+  - `err_logreg_vec`: Distribution of logistic regression errors.
+  - Helps visualize how logistic regression compares to the optimal Bayes classifier.
+
+
+
+```{r echo=FALSE}
+set.seed(123)  # For reproducibility in Monte Carlo simulation
+
+M <- 1000  # Number of Monte Carlo replications
+n <- 1000  # Sample size for each replication
+
+# Vectors to store misclassification rates for each replication
+err_bayes_vec <- numeric(M)
+err_logreg_vec <- numeric(M)
+
+for(m in seq_len(M)) {
+# --- Simulate data ---
+  Y <- rbinom(n, size = 1, prob = 0.5)
+  X <- numeric(n)
+  for(i in seq_len(n)) {
+    if(Y[i] == 0) {
+      X[i] <- runif(1, min = -3, max = 1)
+    } else {
+      X[i] <- runif(1, min = -1, max = 3)
+    }
+  }
+  
+# --- Evaluate Bayes classifier ---
+  y_pred_bayes <- sapply(X, bayes_classifier)
+  err_bayes <- mean(y_pred_bayes != Y)
+  
+# --- Train/Test Split (70-30) for Logistic Regression ---
+  train_idx <- sample(seq_len(n), size = round(0.7 * n))
+  X_train <- X[train_idx]
+  Y_train <- Y[train_idx]
+  X_test  <- X[-train_idx]
+  Y_test  <- Y[-train_idx]
+  
+# --- Fit logistic regression on training data ---
+  df_train <- data.frame(X = X_train, Y = Y_train)
+  logreg   <- glm(Y ~ X, data = df_train, family = binomial)
+  
+# --- Predict on test data ---
+  df_test <- data.frame(X = X_test)
+  y_prob_test <- predict(logreg, newdata = df_test, type = "response")
+  y_pred_test <- ifelse(y_prob_test > 0.5, 1, 0)
+  err_logreg <- mean(y_pred_test != Y_test)
+  
+# --- Record errors ---
+  
+  err_bayes_vec[m]  <- err_bayes
+  err_logreg_vec[m] <- err_logreg
+}
+
+# Summarize the Monte Carlo results
+cat("Average Bayes misclassification rate (in-sample):",
+    mean(err_bayes_vec), "\n")
+cat("Average Logistic Regression misclassification rate (test):",
+    mean(err_logreg_vec), "\n")
+
+# Boxplot comparing the distributions of misclassification rates
+boxplot(err_bayes_vec, err_logreg_vec,
+        names = c("Bayes (in-sample)", "LogReg (test)"),
+        main = "Comparison of Misclassification Rates over 1000 Replications")
+```
+
+### **Interpreting the Results in Context of the Question**
+
+The results from the Monte Carlo simulation compare the performance of the **Bayes classifier** (which represents the theoretical optimal decision rule) and **logistic regression** in terms of classification accuracy. Here’s what we can conclude:
+
+#### **1. Comparing Misclassification Rates**
+- **Bayes Classifier Misclassification Rate:** `0.249677`
+- **Logistic Regression Misclassification Rate:** `0.2508633`
+
+These values indicate that:
+- As expected, the **Bayes classifier** achieves a lower misclassification rate since it is based on the true conditional distributions of \( X \) given \( Y \).
+- **Logistic regression**, however, performs almost as well, with an error rate only slightly higher (by approximately `0.0012`). This suggests that logistic regression is an effective classifier in this setting, despite not having direct access to the underlying probability distributions.
+
+#### **2. Insights from the Boxplot**
+- The **boxplot** provides a visual representation of the misclassification rates over 1000 simulation runs.
+- The two distributions overlap significantly, reinforcing the idea that logistic regression is nearly as effective as the optimal Bayes classifier.
+- The **Bayes classifier’s error rates are slightly more consistent**, as shown by a more compact spread in the boxplot.
+- Logistic regression shows **slightly more variation**, with occasional outliers where it performs worse than expected.
+
+
+
+
+<hr style="margin: 60px 0;">
+
+
+
+========================================================
+## Warm-Up
+
+### Pseudocode of two-sample test described by Friedman
+
+#### 1. Create two samples, by sampling from two distributions
+We are studying the test itself by selecting two distinct distributions to see how well it can differentiate between them. The null hypothesis states that the two samples come from the same distribution, while the alternative hypothesis states they come from different distributions.
+
+SET SEED = N
+GENERATE DISTRIBUTION_1(parameters) 
+GENERATE DISTRIBUTION_2(parameters)
+SET X = SAMPLE FROM DISTRIBUTION_1(parameters)
+SET y = SAMPLE FROM DISTRIBUTION_2(parameters)
+
+#### 2. Data preparation
+Next we prepare all the data to serve as training data,we proceed with labeling the data for the binary classification, such that the first (F0) distribution is labeled 0 and the second (F1) distribution is labeled 1. Once labelled, the two samples are combined into a single dataset
+
+FOR each sample in X assign label 0
+FOR each sample in Y assign label 1
+SET dataset = COMBINE X and Y
+
+#### 3. Train Binary Classifier
+We select a binary classifier and train it using the whole dataset, to be capable of distinguishing between the two distributions and produce a scoring function.
+
+TRAIN binary classifier on dataset
+ASSIGN scores using the classifier
+
+#### 4. Perform the two-sample test
+At this point the two sets of scores can be considered random samples, whose densities can be compared using a univariate two-sample test such as kolmogor-smirnov 
+
+COMPARE the scores using Kolmogorov-Smirnov test
+
+#### Why are Kolmogorov-Smirnov or Mann-Whitney U tests proposed as baseline tests by Friedman?
+  Both of these tests are used for two-sample testing and might be used for goodness-of-fit. Although this is true only for one dimensional distributions (or as noted by Friedman with the possibility to apply them perhaps on two- or three-dimensional ones, if our sample is sufficiently large), they loose power in higher dimensions. However, if we apply the binary classifier as described by Friedman, we can reduce the problem to dimensions low enough to use the Kolmogorov-Smirnov or their counterpart to assess whether the samples proceed from the same or different distributions. 
+
+========================================================
+## Part 2: Exercise
+
+Following Friedman's proposal, we implement it using a binary classifier on k-variate distributions, before the application of a two-sample test. In our case, we opted for a logistic regression, in particular the glmnet() function that also applies regularization to avoid overfitting. As the two-sample test we chose the Kolmogorov-Smirnov test. The focus of this part is to study how the power of the test changes as the distance between the two distributions increases.
+
+### Simulations
+The power and size was studied under the following conditions:
+*the sample sizes of both distributions were set to be equal
+**the number of simulations was set to 50 for all cases
+***the significance level was 0.05 with the exception of the simulation N.6
+1. Sample Size: 50, Dimensions: 5
+2. Sample Size: 100, Dimensions: 5
+3. Sample Size: 50, Dimensions: 7
+4. Sample Size: 50, Dimensions: 9
+5. Sample Size: 50, Dimensions: 3
+6. Sample Size: 50, Dimensions: 5, Alpha: 0.001
+
+### Vizualizations
+We use two plots to portray the results of each simulation, the ROC curve, and plot of the power against the distance shift between the two distributions. Thanks to ROC we obtain the Area Under the Curve (AUC), which marks the ability of the model to distinguish between two classes, such that AUC=1 would mark a model with a perfect classification ability, AUC=0.5 would suggest the models performance is of an equal quality as taking random guesses and anything below 0.5 essentially marks a performance worse than random guessing.
+
+### Results
+
+#### Power: The ability to correctly reject the null hypothesis
+  We can observe the variation in the power of the test as the distance between the two distributions increases. We can conclude that in general the power fluctuates up until the distance between the two means becomes ~0.3 or higher and then it stabilizes. As expected, with the increase in the sample size(Simulation 2) we observed a markant increase in the power of the test, where at 0.3 not only the fluctuations decreased as in other cases but at this point the type II error was compltely eliminated. 
+  When it comes to the change in dimensions, we observe the trend that with more dimensions there is improvement in the power of the test. Quite poor performance can be observed with 3 dimensional distribution (Simulation 5) as opposed to progressive improvements in simulation 1,3 and finally simulation 4.  
+  As we decrease the significance level the power of the method drastically reduces as well, and as we know with this also the Type I error decreases.
+
+#### AUC: The ability to correctly distinguish the two classes
+  We can observe the Area Under the Curve (AUC) increases as the number of dimensions of the feature vector increases. Specifically, we can observe the purple curve representing the simulation of 9-variate distributions that shows the best performance out of all the simulations with AUC above 0.8. The poorest performance, on the other hand, can be found in the model using distributions with 3-dimensional feature vector, highlighting the difficulty the model encounters to correctly classify samples proceeding from lower dimensional distributions.
+  Another parameter we chose to alter was the sample size, which we incresed in the second simulation from the baseline of 50 to 100 per distribution. With this increase came a considerable fall in the model's performance suggesting a negative correlation between the sample size and the AUC.
+  Finally, with the reduction of the significance level not only the power reduced but also the AUC.
+  
+  To conclude we can say that with the change in the sample size the AUC and power change in different directions, whereas with alteration in either the dimensions or the significance level the AUC and power move in the same direction.
+  
+
+```{r EX-02 Simulation 1, cache = TRUE}
+
+# Seed for reproducibility
+set.seed(52)
+
+## Set the parameters
+M <- 50  # Number of simulations
+n_1 <- 50  # Size of sample_1
+n_2 <- n_1  # Size of sample_2
+k <- 5  # Number of dimensions
+alpha <- 0.05  # Significance level for the Kolmogorov-Smirnov test
+
+# Set the distances by which we want the second distribution to shift
+distances <- seq(0, 0.7, 0.01)
+# Prepare a data frame that will record the power for each shift
+power_df <- data.frame(Distances = distances, Power = NA)
+
+# Initialize a vector to store results for ROC curve
+all_true_labels <- c()
+all_predicted_scores <- c()
+
+## The Simulation
+for (i in seq_along(distances)) {
+  # Define mean shift for the first (F1) distribution 
+  mu_1 <- rep(distances[i], k) 
+  
+  p_values <- replicate(M, {
+    # Generate the first distribution (F0)
+    sample_1 <- mvrnorm(n_1, rep(0, k), diag(k))
+    df_1 <- as.data.frame(sample_1)
+    
+    # Generate the second distribution (F1)
+    sample_2 <- mvrnorm(n_2, mu_1, diag(k))
+    df_2 <- as.data.frame(sample_2)
+    
+    # Set labels for each distribution
+    df_1$Label <- 0
+    df_2$Label <- 1
+    
+    # Combine the samples from both distributions into a single dataset
+    df_full <- rbind(df_1, df_2)
+    
+    # Separate the features and the labels into a matrix and vector respectively
+    x <- as.matrix(df_full[, -ncol(df_full)])  
+    y <- df_full$Label 
+    
+    # Perform cross-validation
+    cv_model <- cv.glmnet(x, y, family = "binomial", alpha = 1)
+    
+    # Pick the best regularization param. from the cross-validation
+    best_lambda <- cv_model$lambda.min
+    
+    # Train the model
+    lr_model <- glmnet(x, y, family = "binomial", alpha = 1, lambda = best_lambda)
+    
+    # Get decision scores (the predicted probabilities)
+    scores <- predict(lr_model, x, type = "response")
+    
+    # Save both, true labels and the predicted scores for ROC
+    all_true_labels <<- c(all_true_labels, df_full$Label)
+    all_predicted_scores <<- c(all_predicted_scores, scores)
+    
+    # Separate the scores of each class
+    scores_0 <- scores[df_full$Label == 0]
+    scores_1 <- scores[df_full$Label == 1]
+    
+    # We use the Kolmogorov-Smirnov test
+    ks_result <- ks.test(scores_0, scores_1)
+    
+    # Return whether the KS test is significant (p-value < alpha)
+    return(ks_result$p.value < alpha)
+  })
+  
+  # Assign the power to the distance shift
+  power_df$Power[i] <- mean(p_values)
+}
+
+##  Vizualizations 
+
+# Plot the ROC curve
+roc_curve_1 <- roc(all_true_labels, all_predicted_scores)
+plot(roc_curve_1, col = "blue", lwd = 3,main='ROC Curve' ,
+     xlab = "False Positive Rate (1 - Specificity)", 
+     ylab = "True Positive Rate (Sensitivity)",
+     cex.lab = 1, cex.axis = 0.8)
+
+mtext(paste("Sample Size:", n_1, "| Number of Dimensions:", k), side = 3, line = 2, cex = 0.8, font = 0.3)
+abline(a = 0, b = 1, lty = 2, col = "red", lwd = 2)
+grid(col = "gray", lty = "dotted")
+auc_value_1 <- auc(roc_curve_1)
+legend("bottomright", legend = paste("AUC =", round(auc_value_1, 3)), 
+       col = "blue", lwd = 3, bty = "n", cex = 1)
+
+# Plot the power vs distances between the two distributions
+plot(power_df$Distances, power_df$Power, type = "b", col = "blue", pch = 19, 
+     xlab = "Mean Shift Distance", ylab = "Power of the Test", 
+     main = "Power vs Distance Between F0 and F1")
+
+```
+
+
+```{r EX-02 Simulation 2, cache = TRUE}
+
+# Seed for reproducibility
+set.seed(52)
+
+## Set the parameters
+M <- 50  # Number of simulations
+n_1 <- 100  # Size of sample_1
+n_2 <- n_1  # Size of sample_2
+k <- 5  # Number of dimensions
+alpha <- 0.05  # Significance level for the Kolmogorov-Smirnov test
+
+# Set the distances by which we want the second distribution to shift
+distances <- seq(0, 0.6, 0.01)
+# Prepare a data frame that will record the power for each shift
+power_df <- data.frame(Distances = distances, Power = NA)
+
+# Initialize a vector to store results for ROC curve
+all_true_labels <- c()
+all_predicted_scores <- c()
+
+## The Simulation
+for (i in seq_along(distances)) {
+  # Define mean shift for the first (F1) distribution 
+  mu_1 <- rep(distances[i], k) 
+  
+  p_values <- replicate(M, {
+    # Generate the first distribution (F0)
+    sample_1 <- mvrnorm(n_1, rep(0, k), diag(k))
+    df_1 <- as.data.frame(sample_1)
+    
+    # Generate the second distribution (F1)
+    sample_2 <- mvrnorm(n_2, mu_1, diag(k))
+    df_2 <- as.data.frame(sample_2)
+    
+    # Set labels for each distribution
+    df_1$Label <- 0
+    df_2$Label <- 1
+    
+    # Combine the samples from both distributions into a single dataset
+    df_full <- rbind(df_1, df_2)
+    
+    # Separate the features and the labels into a matrix and vector respectively
+    x <- as.matrix(df_full[, -ncol(df_full)])  
+    y <- df_full$Label 
+    
+    # Train the log. regression model with crossvalidation
+    cv_model <- cv.glmnet(x, y, family = "binomial", alpha = 1)
+    
+    # Pick the best lambda from the cross-validation
+    best_lambda <- cv_model$lambda.min
+    lr_model <- glmnet(x, y, family = "binomial", alpha = 1, lambda = best_lambda)
+    
+    # Get decision scores (the predicted probabilities)
+    scores <- predict(lr_model, x, type = "response")
+    
+    # Save, both, true labels and the predicted scores for ROC
+    all_true_labels <<- c(all_true_labels, df_full$Label)
+    all_predicted_scores <<- c(all_predicted_scores, scores)
+    
+    # Separate the scores of each class
+    scores_0 <- scores[df_full$Label == 0]
+    scores_1 <- scores[df_full$Label == 1]
+    
+    # We use the Kolmogorov-Smirnov test
+    suppressWarnings({ks_result <- ks.test(scores_0, scores_1)})
+    
+    # Return whether the KS test is significant (p-value < alpha)
+    return(ks_result$p.value < alpha)
+  })
+  
+  # Assign the power to the distance shift
+  power_df$Power[i] <- mean(p_values)
+}
+
+##  Vizualizations 
+
+# Plot the ROC curve
+roc_curve_2 <- roc(all_true_labels, all_predicted_scores)
+plot(roc_curve_2, col = "blue", lwd = 3,main='ROC Curve' ,
+     xlab = "False Positive Rate (1 - Specificity)", 
+     ylab = "True Positive Rate (Sensitivity)",
+     cex.lab = 1, cex.axis = 0.8)
+
+mtext(paste("Sample Size:", n_1, "| Number of Dimensions:", k), side = 3, line = 2, cex = 0.8, font = 0.3)
+abline(a = 0, b = 1, lty = 2, col = "red", lwd = 2)
+grid(col = "gray", lty = "dotted")
+auc_value_2 <- auc(roc_curve_2)
+legend("bottomright", legend = paste("AUC =", round(auc_value_2, 3)), 
+       col = "blue", lwd = 3, bty = "n", cex = 1)
+
+# Plot the power vs distances between the two distributions
+plot(power_df$Distances, power_df$Power, type = "b", col = "blue", pch = 19, 
+     xlab = "Mean Shift Distance", ylab = "Power of the Test", 
+     main = "Power vs Distance Between F0 and F1")
+
+```
+
+```{r EX-02 Simulation 3, cache = TRUE}
+
+# Seed for reproducibility
+set.seed(52)
+
+## Set the parameters
+M <- 50  # Number of simulations
+n_1 <- 50  # Size of sample_1
+n_2 <- n_1  # Size of sample_2
+k <- 7  # Number of dimensions
+alpha <- 0.05  # Significance level for the Kolmogorov-Smirnov test
+
+# Set the distances by which we want the second distribution to shift
+distances <- seq(0, 0.6, 0.01)
+# Prepare a data frame that will record the power for each shift
+power_df <- data.frame(Distances = distances, Power = NA)
+
+# Initialize a vector to store results for ROC curve
+all_true_labels <- c()
+all_predicted_scores <- c()
+
+## The Simulation
+for (i in seq_along(distances)) {
+  # Define mean shift for the first (F1) distribution 
+  mu_1 <- rep(distances[i], k) 
+  
+  p_values <- replicate(M, {
+    # Generate the first distribution (F0)
+    sample_1 <- mvrnorm(n_1, rep(0, k), diag(k))
+    df_1 <- as.data.frame(sample_1)
+    
+    # Generate the second distribution (F1)
+    sample_2 <- mvrnorm(n_2, mu_1, diag(k))
+    df_2 <- as.data.frame(sample_2)
+    
+    # Set labels for each distribution
+    df_1$Label <- 0
+    df_2$Label <- 1
+    
+    # Combine the samples from both distributions into a single dataset
+    df_full <- rbind(df_1, df_2)
+    
+    # Separate the features and the labels into a matrix and vector respectively
+    x <- as.matrix(df_full[, -ncol(df_full)])  
+    y <- df_full$Label 
+    
+    # Train the log. regression model with crossvalidation
+    cv_model <- cv.glmnet(x, y, family = "binomial", alpha = 1)
+    
+    # Pick the best lambda from the cross-validation
+    best_lambda <- cv_model$lambda.min
+    lr_model <- glmnet(x, y, family = "binomial", alpha = 1, lambda = best_lambda)
+    
+    # Get decision scores (the predicted probabilities)
+    scores <- predict(lr_model, x, type = "response")
+    
+    # Save, both, true labels and the predicted scores for ROC
+    all_true_labels <<- c(all_true_labels, df_full$Label)
+    all_predicted_scores <<- c(all_predicted_scores, scores)
+    
+    # Separate the scores of each class
+    scores_0 <- scores[df_full$Label == 0]
+    scores_1 <- scores[df_full$Label == 1]
+    
+    # We use the Kolmogorov-Smirnov test
+    ks_result <- ks.test(scores_0, scores_1)
+    
+    # Return whether the KS test is significant (p-value < alpha)
+    return(ks_result$p.value < alpha)
+  })
+  
+  # Assign the power to the distance shift
+  power_df$Power[i] <- mean(p_values)
+}
+
+##  Vizualizations 
+
+# Plot the ROC curve
+roc_curve_3 <- roc(all_true_labels, all_predicted_scores)
+plot(roc_curve_3, col = "blue", lwd = 3,main='ROC Curve' ,
+     xlab = "False Positive Rate (1 - Specificity)", 
+     ylab = "True Positive Rate (Sensitivity)",
+     cex.lab = 1, cex.axis = 0.8)
+
+mtext(paste("Sample Size:", n_1, "| Number of Dimensions:", k), side = 3, line = 2, cex = 0.8, font = 0.3)
+abline(a = 0, b = 1, lty = 2, col = "red", lwd = 2)
+grid(col = "gray", lty = "dotted")
+auc_value_3 <- auc(roc_curve_3)
+legend("bottomright", legend = paste("AUC =", round(auc_value_3, 3)), 
+       col = "blue", lwd = 3, bty = "n", cex = 1)
+
+# Plot the power vs distances between the two distributions
+plot(power_df$Distances, power_df$Power, type = "b", col = "blue", pch = 19, 
+     xlab = "Mean Shift Distance", ylab = "Power of the Test", 
+     main = "Power vs Distance Between F0 and F1")
+
+```
+
+```{r EX-02 Simulation 4, cache = TRUE}
+
+# Seed for reproducibility
+set.seed(52)
+
+## Set the parameters
+M <- 50  # Number of simulations
+n_1 <- 50  # Size of sample_1
+n_2 <- n_1  # Size of sample_2
+k <- 9  # Number of dimensions
+alpha <- 0.05  # Significance level for the Kolmogorov-Smirnov test
+
+# Set the distances by which we want the second distribution to shift
+distances <- seq(0, 0.7, 0.01)
+# Prepare a data frame that will record the power for each shift
+power_df <- data.frame(Distances = distances, Power = NA)
+
+# Initialize a vector to store results for ROC curve
+all_true_labels <- c()
+all_predicted_scores <- c()
+
+## The Simulation
+for (i in seq_along(distances)) {
+  # Define mean shift for the first (F1) distribution 
+  mu_1 <- rep(distances[i], k) 
+  
+  p_values <- replicate(M, {
+    # Generate the first distribution (F0)
+    sample_1 <- mvrnorm(n_1, rep(0, k), diag(k))
+    df_1 <- as.data.frame(sample_1)
+    
+    # Generate the second distribution (F1)
+    sample_2 <- mvrnorm(n_2, mu_1, diag(k))
+    df_2 <- as.data.frame(sample_2)
+    
+    # Set labels for each distribution
+    df_1$Label <- 0
+    df_2$Label <- 1
+    
+    # Combine the samples from both distributions into a single dataset
+    df_full <- rbind(df_1, df_2)
+    
+    # Separate the features and the labels into a matrix and vector respectively
+    x <- as.matrix(df_full[, -ncol(df_full)])  
+    y <- df_full$Label 
+    
+    # Train the log. regression model with crossvalidation
+    cv_model <- cv.glmnet(x, y, family = "binomial", alpha = 1)
+    
+    # Pick the best lambda from the cross-validation
+    best_lambda <- cv_model$lambda.min
+    lr_model <- glmnet(x, y, family = "binomial", alpha = 1, lambda = best_lambda)
+    
+    # Get decision scores (the predicted probabilities)
+    scores <- predict(lr_model, x, type = "response")
+    
+    # Save, both, true labels and the predicted scores for ROC
+    all_true_labels <<- c(all_true_labels, df_full$Label)
+    all_predicted_scores <<- c(all_predicted_scores, scores)
+    
+    # Separate the scores of each class
+    scores_0 <- scores[df_full$Label == 0]
+    scores_1 <- scores[df_full$Label == 1]
+    
+    # We use the Kolmogorov-Smirnov test
+    ks_result <- ks.test(scores_0, scores_1)
+    
+    # Return whether the KS test is significant (p-value < alpha)
+    return(ks_result$p.value < alpha)
+  })
+  
+  # Assign the power to the distance shift
+  power_df$Power[i] <- mean(p_values)
+}
+
+##  Vizualizations 
+
+# Plot the ROC curve
+roc_curve_4 <- roc(all_true_labels, all_predicted_scores)
+plot(roc_curve_4, col = "blue", lwd = 3,main='ROC Curve' ,
+     xlab = "False Positive Rate (1 - Specificity)", 
+     ylab = "True Positive Rate (Sensitivity)",
+     cex.lab = 1, cex.axis = 0.8)
+
+mtext(paste("Sample Size:", n_1, "| Number of Dimensions:", k), side = 3, line = 2, cex = 0.8, font = 0.3)
+abline(a = 0, b = 1, lty = 2, col = "red", lwd = 2)
+grid(col = "gray", lty = "dotted")
+auc_value_4 <- auc(roc_curve_4)
+legend("bottomright", legend = paste("AUC =", round(auc_value_4, 3)), 
+       col = "blue", lwd = 3, bty = "n", cex = 1)
+
+# Plot the power vs distances between the two distributions
+plot(power_df$Distances, power_df$Power, type = "b", col = "blue", pch = 19, 
+     xlab = "Mean Shift Distance", ylab = "Power of the Test", 
+     main = "Power vs Distance Between F0 and F1")
+
+```
+
+```{r EX-02 Simulation 5, cache = TRUE}
+
+# Seed for reproducibility
+set.seed(52)
+
+## Set the parameters
+M <- 50  # Number of simulations
+n_1 <- 50  # Size of sample_1
+n_2 <- n_1  # Size of sample_2
+k <- 3  # Number of dimensions
+alpha <- 0.05  # Significance level for the Kolmogorov-Smirnov test
+
+# Set the distances by which we want the second distribution to shift
+distances <- seq(0, 0.7, 0.01)
+# Prepare a data frame that will record the power for each shift
+power_df <- data.frame(Distances = distances, Power = NA)
+
+# Initialize a vector to store results for ROC curve
+all_true_labels <- c()
+all_predicted_scores <- c()
+
+## The Simulation
+for (i in seq_along(distances)) {
+  # Define mean shift for the first (F1) distribution 
+  mu_1 <- rep(distances[i], k) 
+  
+  p_values <- replicate(M, {
+    # Generate the first distribution (F0)
+    sample_1 <- mvrnorm(n_1, rep(0, k), diag(k))
+    df_1 <- as.data.frame(sample_1)
+    
+    # Generate the second distribution (F1)
+    sample_2 <- mvrnorm(n_2, mu_1, diag(k))
+    df_2 <- as.data.frame(sample_2)
+    
+    # Set labels for each distribution
+    df_1$Label <- 0
+    df_2$Label <- 1
+    
+    # Combine the samples from both distributions into a single dataset
+    df_full <- rbind(df_1, df_2)
+    
+    # Separate the features and the labels into a matrix and vector respectively
+    x <- as.matrix(df_full[, -ncol(df_full)])  
+    y <- df_full$Label 
+    
+    # Train the log. regression model with crossvalidation
+    cv_model <- cv.glmnet(x, y, family = "binomial", alpha = 1)
+    
+    # Pick the best lambda from the cross-validation
+    best_lambda <- cv_model$lambda.min
+    lr_model <- glmnet(x, y, family = "binomial", alpha = 1, lambda = best_lambda)
+    
+    # Get decision scores (the predicted probabilities)
+    scores <- predict(lr_model, x, type = "response")
+    
+    # Save, both, true labels and the predicted scores for ROC
+    all_true_labels <<- c(all_true_labels, df_full$Label)
+    all_predicted_scores <<- c(all_predicted_scores, scores)
+    
+    # Separate the scores of each class
+    scores_0 <- scores[df_full$Label == 0]
+    scores_1 <- scores[df_full$Label == 1]
+    
+    # We use the Kolmogorov-Smirnov test
+    ks_result <- ks.test(scores_0, scores_1)
+    
+    # Return whether the KS test is significant (p-value < alpha)
+    return(ks_result$p.value < alpha)
+  })
+  
+  # Assign the power to the distance shift
+  power_df$Power[i] <- mean(p_values)
+}
+
+##  Vizualizations 
+
+# Plot the ROC curve
+roc_curve_5 <- roc(all_true_labels, all_predicted_scores)
+plot(roc_curve_5, col = "blue", lwd = 3,main='ROC Curve' ,
+     xlab = "False Positive Rate (1 - Specificity)", 
+     ylab = "True Positive Rate (Sensitivity)",
+     cex.lab = 1, cex.axis = 0.8)
+
+mtext(paste("Sample Size:", n_1, "| Number of Dimensions:", k), side = 3, line = 2, cex = 0.8, font = 0.3)
+abline(a = 0, b = 1, lty = 2, col = "red", lwd = 2)
+grid(col = "gray", lty = "dotted")
+auc_value_5 <- auc(roc_curve_5)
+legend("bottomright", legend = paste("AUC =", round(auc_value_5, 3)), 
+       col = "blue", lwd = 3, bty = "n", cex = 1)
+
+# Plot the power vs distances between the two distributions
+plot(power_df$Distances, power_df$Power, type = "b", col = "blue", pch = 19, 
+     xlab = "Mean Shift Distance", ylab = "Power of the Test", 
+     main = "Power vs Distance Between F0 and F1")
+
+```
+```{r EX-02 Simulation 6, cache = TRUE}
+
+# Seed for reproducibility
+set.seed(52)
+
+## Set the parameters
+M <- 50  # Number of simulations
+n_1 <- 50  # Size of sample_1
+n_2 <- n_1  # Size of sample_2
+k <- 5  # Number of dimensions
+alpha <- 0.001  # Significance level for the Kolmogorov-Smirnov test
+
+# Set the distances by which we want the second distribution to shift
+distances <- seq(0, 0.6, 0.01)
+# Prepare a data frame that will record the power for each shift
+power_df <- data.frame(Distances = distances, Power = NA)
+
+# Initialize a vector to store results for ROC curve
+all_true_labels <- c()
+all_predicted_scores <- c()
+
+## The Simulation
+for (i in seq_along(distances)) {
+  # Define mean shift for the first (F1) distribution 
+  mu_1 <- rep(distances[i], k) 
+  
+  p_values <- replicate(M, {
+    # Generate the first distribution (F0)
+    sample_1 <- mvrnorm(n_1, rep(0, k), diag(k))
+    df_1 <- as.data.frame(sample_1)
+    
+    # Generate the second distribution (F1)
+    sample_2 <- mvrnorm(n_2, mu_1, diag(k))
+    df_2 <- as.data.frame(sample_2)
+    
+    # Set labels for each distribution
+    df_1$Label <- 0
+    df_2$Label <- 1
+    
+    # Combine the samples from both distributions into a single dataset
+    df_full <- rbind(df_1, df_2)
+    
+    # Separate the features and the labels into a matrix and vector respectively
+    x <- as.matrix(df_full[, -ncol(df_full)])  
+    y <- df_full$Label 
+    
+    # Train the log. regression model with crossvalidation
+    cv_model <- cv.glmnet(x, y, family = "binomial", alpha = 1)
+    
+    # Pick the best lambda from the cross-validation
+    best_lambda <- cv_model$lambda.min
+    lr_model <- glmnet(x, y, family = "binomial", alpha = 1, lambda = best_lambda)
+    
+    # Get decision scores (the predicted probabilities)
+    scores <- predict(lr_model, x, type = "response")
+    
+    # Save, both, true labels and the predicted scores for ROC
+    all_true_labels <<- c(all_true_labels, df_full$Label)
+    all_predicted_scores <<- c(all_predicted_scores, scores)
+    
+    # Separate the scores of each class
+    scores_0 <- scores[df_full$Label == 0]
+    scores_1 <- scores[df_full$Label == 1]
+    
+    # We use the Kolmogorov-Smirnov test
+    suppressWarnings({ks_result <- ks.test(scores_0, scores_1)})
+    
+    # Return whether the KS test is significant (p-value < alpha)
+    return(ks_result$p.value < alpha)
+  })
+  
+  # Assign the power to the distance shift
+  power_df$Power[i] <- mean(p_values)
+}
+
+##  Vizualizations 
+
+# Plot the ROC curve
+roc_curve_6 <- roc(all_true_labels, all_predicted_scores)
+plot(roc_curve_6, col = "blue", lwd = 3,main='ROC Curve' ,
+     xlab = "False Positive Rate (1 - Specificity)", 
+     ylab = "True Positive Rate (Sensitivity)",
+     cex.lab = 1, cex.axis = 0.8)
+
+mtext(paste("Sample Size:", n_1, "| Number of Dimensions:", k), side = 3, line = 2, cex = 0.8, font = 0.3)
+abline(a = 0, b = 1, lty = 2, col = "red", lwd = 2)
+grid(col = "gray", lty = "dotted")
+auc_value_6 <- auc(roc_curve_6)
+legend("bottomright", legend = paste("AUC =", round(auc_value_6, 3)), 
+       col = "blue", lwd = 3, bty = "n", cex = 1)
+
+# Plot the power vs distances between the two distributions
+plot(power_df$Distances, power_df$Power, type = "b", col = "blue", pch = 19, 
+     xlab = "Mean Shift Distance", ylab = "Power of the Test", 
+     main = "Power vs Distance Between F0 and F1")
+
+```
+
+```{r EX-02 AUC Comparision, cache = TRUE}
+plot(roc_curve_1, col = "blue", lwd = 3, main = "ROC Curves Comparison", 
+     xlab = "False Positive Rate (1 - Specificity)", 
+     ylab = "True Positive Rate (Sensitivity)",
+     cex.lab = 1.1, cex.axis = 1.1)
+
+# Add the second ROC curve to the plot
+lines(roc_curve_2, col = "red", lwd = 3)
+lines(roc_curve_3, col = "green", lwd = 3)
+lines(roc_curve_4, col = "purple", lwd = 3)
+lines(roc_curve_5, col = "orange", lwd = 3)
+lines(roc_curve_6, col = "brown", lwd = 3)
+
+
+# Add a diagonal line for random performance (AUC = 0.5)
+abline(a = 0, b = 1, lty = 2, col = "gray")
+
+# Add a legend to the plot
+legend("bottomright", legend = c("AUC:",paste("N=50,k=5: ", round(auc_value_1, 3)),paste("N=100,k=5: ", round(auc_value_2, 3)),paste("N=50,k=7: ", round(auc_value_3, 3)),paste("N=50,k=9: ", round(auc_value_4, 3)),paste("N=50,k=3: ", round(auc_value_5, 3)),paste("N=50,k=5, α=0.01: ", round(auc_value_6, 3))), 
+       col = c("white","blue", "red","green","purple","orange","brown"), lwd = 3, bty = "n", cex = 1)
+```
+
+
+========================================================
+```{r}
+
+```
+<hr style="margin: 60px 0;">
+
+### Part 3
+
+<div style="margin-bottom: 30px;"></div>
+
+### The Data: Heart rate zones in running  
+
+<div style="margin-bottom: 30px;"></div>
+
+**Heart rate zones**, or HR zones, are a way to monitor how hard you’re training. There are typically 5+1 heart rate zones (Zone-0, Zone-1, ... ,Zone-5) based on the intensity of training with regard to the individual *maximum heart rate*.
+
+HR zones are closely linked to your *aerobic* and *anaerobic* thresholds. Understanding this can really help when considering heart rate zones exercise, especially your heart rate zones for running or heart rate zone training for other fitness goals. The following HR zones chart shows the level of intensity as a percentage of Maximum Heart Rate used in each one.
+
+| Zone   | Intensity    | Percentage of HRmax |
+|--------|--------------|---------------------|
+| Zone 0 | Resting      | -                   |
+| Zone 1 | Very light   | 50–60%             |
+| Zone 2 | Light        | 60–70%             |
+| Zone 3 | Moderate     | 70–80%             |
+| Zone 4 | Hard         | 80–90%             |
+| Zone 5 | Maximum      | 90–100%           |
+
+Modern sports watches contain many sensors to monitor *heart rate, cadence, altitude*, etc. The readings are typically saved once per second.
+
+The present data are 60 seconds long recordings coming from **FIT files** I collected on many runs during 2021 and 2022. The runs were made in various environments, i.e., hilly and flat. Also, various efforts, e.g., long and slow runs and interval training, are included. The data collection was made using an *Apple Watch* accompanied by a **Polar OH1 sensor**.
+
+
+
+<hr style="margin: 40px 0;">
+
+
+
+```{r}
+## Load Dataset
+
+load("hw_data.RData")
+
+```
+
+
+### Step-by-Step Friedman’s Procedure  
+
+
+- We have two Zones (Zone-2 , Zone-3)
+
+- We want to test if Zone-2 and Zone-3 come from the same or different distributions.
+
+- Null Hypothesis : Both distributions are the same
+
+- Alternative Hypothesis : The distributions are different
+
+<hr style="margin: 40px 0;">
+
+### Data Preprocessing  
+
+<div style="margin-bottom: 30px;"></div>
+
+Convert the dataset into a binary classification problem:<br>
+
+I used −1 and 1 for classification because many machine learning models like SVM optimize better with symmetric labels around zero, improving convergence and decision boundary interpretation.
+
+Zone-2 → Label = +1  
+
+Zone-3 → Label = -1  
+
+
+Since our dataset contains time-series speed & altitude data, we transform it into summary statistics:
+
+
+- **Mean**  
+
+- **Standard Deviation**  
+
+- **Min**  
+
+- **Max**  
+
+- **Range**<br><br>
+
+
+Why This Approach? 
+
+Its simple,	fast and interpretable for classification & Friedman’s Test.
+
+**Dimensionality Reduction**: Instead of 120+ columns, we create a compact vector space.
+
+**Preserving Important Information**: These statistics capture key trends without requiring full time-series analysis.
+
+**Useful for Machine Learning**: This transformed dataset is better suited for classification models.
+
+
+<hr style="margin: 40px 0;">
+
+
+
+```{r, results='asis'}
+
+B <- 1000 # Number of permutations
+alpha <- 0.01 # Significance level
+
+# Exclude Zone-4 and assign Zone-2 & Zone-3 to (1,-1) respectively
+df <- hw[hw$y %in% c("Zone-2", "Zone-3"), ]
+
+# Define custom colors for each zone
+zone_colors <- c("Zone-2" = "darkblue", "Zone-3" = "darkred")
+
+# Create the bar plot with custom colors
+ggplot(hw, aes(x = y, fill = y)) +
+  geom_bar(color = "black") + 
+  scale_fill_manual(values = zone_colors) + 
+  labs(title = "Frequency of Zones", 
+       x = "Zone", 
+       y = "Frequency") +
+  theme_minimal(base_size = 12) +
+  theme(legend.position = "top")
+```
+
+<div style="margin-bottom: 30px;"></div>
+
+```{r, results='asis'}
+df$Zone <- ifelse(df$y == "Zone-2", 1, -1)
+df$Zone <- as.factor(df$Zone)
+
+
+# Identify speed and altitude columns
+speed_cols <- grep("^sp\\.", names(hw), value = TRUE)
+altitude_cols <- grep("^al\\.", names(hw), value = TRUE)
+
+# Compute summary statistics
+df$speed_mean <- rowMeans(df[speed_cols], na.rm = TRUE)
+df$speed_sd <- apply(df[speed_cols], 1, sd, na.rm = TRUE)
+df$speed_min <- apply(df[speed_cols], 1, min, na.rm = TRUE)
+df$speed_max <- apply(df[speed_cols], 1, max, na.rm = TRUE)
+df$speed_range <- df$speed_max - df$speed_min
+
+df$altitude_mean <- rowMeans(df[altitude_cols], na.rm = TRUE)
+df$altitude_sd <- apply(df[altitude_cols], 1, sd, na.rm = TRUE)
+df$altitude_min <- apply(df[altitude_cols], 1, min, na.rm = TRUE)
+df$altitude_max <- apply(df[altitude_cols], 1, max, na.rm = TRUE)
+df$altitude_range <- df$altitude_max - df$altitude_min
+
+# Select only the necessary columns
+df <- df[, c("Zone", "speed_mean", "speed_sd", "speed_min", "speed_max", "speed_range",
+             "altitude_mean", "altitude_sd", "altitude_min", "altitude_max", "altitude_range")]
+
+# Display first few rows
+kable(head(df))
+
+# Split dataset into training (70%) and testing (30%)
+set.seed(161)
+train_index <- sample(1:nrow(df), 0.7 * nrow(df))
+train_data <- df[train_index, ]
+test_data <- df[-train_index, ]
+```
+
+
+<hr style="margin: 40px 0;">
+
+
+### Model training  
+
+<div style="margin-bottom: 30px;"></div>
+
+We try 3 classifiers **(SVM, Random Forest and Logistic Regression)** to separate Zone-2 and Zone-3.  
+
+
+**SVM is our first choice** because:
+
+1. Works well in high-dimensional feature space
+2. Good for small datasets
+3. Ideal for capturing non-linear relationships  
+
+
+All classifiers learn a function that assigns a score to each observation.
+
+
+```{r Model training part, cache = TRUE}
+
+# Train SVM Model
+svm_model <- svm(Zone ~ ., data = train_data, kernel = "radial", probability = TRUE)
+
+# Train Random Forest Model
+rf_model <- randomForest(Zone ~ ., data = train_data, ntree = 100)
+
+# Train Logistic Regression Model
+logistic_model <- glm(Zone ~ ., data = train_data, family = binomial)
+
+```
+
+
+<hr style="margin: 40px 0;">
+
+
+### Compute Score Values  
+
+The score values are computed as follows:  
+
+
+- **S⁺** → Score values assigned to Zone-2 (+1)  
+
+- **S⁻** → Score values assigned to Zone-3 (-1)  
+
+
+If the classifier easily separates the two groups, the two distributions are likely different.
+
+<hr style="margin: 40px 0;">
+
+
+```{r Models, results='asis', cache = TRUE}
+# Predict with SVM
+svm_predictions <- predict(svm_model, test_data, probability = TRUE)
+svm_probabilities <- attr(svm_predictions, "probabilities")
+test_data$Score_svm <- svm_probabilities[, colnames(svm_probabilities) == "1"]
+
+# Predict with Random Forest
+rf_predictions <- predict(rf_model, test_data, type = "prob")
+test_data$Score_rf <- rf_predictions[, 2]  # Extract probability for Zone-2
+
+# Predict with Logistic Regression
+logistic_probs <- predict(logistic_model, test_data, type = "response")
+test_data$Score_logistic <- logistic_probs  # Store score
+
+# Display first few rows with scores
+kable(head(test_data))
+
+# Separate score distributions for each model
+score_svm_zone2 <- test_data$Score_svm[test_data$Zone == 1]
+score_svm_zone3 <- test_data$Score_svm[test_data$Zone == -1]
+
+score_rf_zone2 <- test_data$Score_rf[test_data$Zone == 1]
+score_rf_zone3 <- test_data$Score_rf[test_data$Zone == -1]
+
+score_logistic_zone2 <- test_data$Score_logistic[test_data$Zone == 1]
+score_logistic_zone3 <- test_data$Score_logistic[test_data$Zone == -1]
+
+
+```
+
+
+<hr style="margin: 40px 0;">
+
+
+### Density plots of Score Distributions<br><br>
+
+SVM Score Distribution (Top Plot)<br><br>
+
+Zone-3 (red) is highly concentrated near 0.0.
+Zone-2 (blue) is more spread out, but mostly towards higher scores.
+
+Strong separation:
+
+The peak for Zone-3 is far from Zone-2.
+Almost no overlap in densities → SVM classifies the two zones well.
+
+**SVM effectively separates** Zone-2 and Zone-3.
+
+
+
+Random Forest provides good separation but has some **misclassification**.
+
+
+Logistic Regression **struggles the most** to separate the two zones.
+
+<div style="margin-bottom: 40px;"></div>
+
+
+
+```{r}
+svm_plot <- ggplot() +
+  geom_density(aes(x = score_svm_zone2, fill = "Zone-2"), alpha = 0.4) +
+  geom_density(aes(x = score_svm_zone3, fill = "Zone-3"), alpha = 0.4) +
+  scale_fill_manual(name = "", values = c("Zone-2" = "blue", "Zone-3" = "red")) +
+  labs(title = "SVM Score Distributions", x = "Score", y = "Density") +
+  theme_minimal()
+
+rf_plot <- ggplot() +
+  geom_density(aes(x = score_rf_zone2, fill = "Zone-2"), alpha = 0.4) +
+  geom_density(aes(x = score_rf_zone3, fill = "Zone-3"), alpha = 0.4) +
+  scale_fill_manual(name = "", values = c("Zone-2" = "blue", "Zone-3" = "red")) +
+  labs(title = "Random Forest Score Distributions", x = "Score", y = "Density") +
+  theme_minimal()
+
+logistic_plot <- ggplot() +
+  geom_density(aes(x = score_logistic_zone2, fill = "Zone-2"), alpha = 0.4) +
+  geom_density(aes(x = score_logistic_zone3, fill = "Zone-3"), alpha = 0.4) +
+  scale_fill_manual(name = "", values = c("Zone-2" = "blue", "Zone-3" = "red")) +
+  labs(title = "Logistic Regression Score Distributions", x = "Score", y = "Density") +
+  theme_minimal()
+
+# Arrange plots
+grid.arrange(svm_plot, rf_plot, logistic_plot, nrow = 3)
+```
+
+
+<hr style="margin: 60px 0;">
+
+
+### Box plots for each classifier
+
+<div style="margin-bottom: 30px;"></div>
+
+
+
+```{r}
+# Boxplot for SVM Scores
+svm_boxplot <- ggplot(test_data, aes(x = Zone, y = Score_svm, fill = as.factor(Zone))) +
+  geom_boxplot(alpha = 0.7) +
+  labs(title = "SVM Score Distributions", x = "Zone", y = "Score") +
+  scale_fill_manual(name = "", values = c("1" = "blue", "-1" = "red"),
+  labels = c("-1" = "Zone-2", "1" = "Zone-3")) +
+  theme_minimal()
+
+# Boxplot for Random Forest Scores
+rf_boxplot <- ggplot(test_data, aes(x = Zone, y = Score_rf, fill = as.factor(Zone))) +
+  geom_boxplot(alpha = 0.7) +
+  labs(title = "Random Forest Score Distributions", x = "Zone", y = "Score") +
+  scale_fill_manual(name = "", values = c("1" = "blue", "-1" = "red"),
+  labels = c("-1" = "Zone-2", "1" = "Zone-3")) +
+  theme_minimal()
+
+# Boxplot for Logistic Regression Scores
+logistic_boxplot <- ggplot(test_data, aes(x = Zone, y = Score_logistic, fill = as.factor(Zone))) +
+  geom_boxplot(alpha = 0.7) +
+  labs(title = "Logistic Regression Score Distributions", x = "Zone", y = "Score") +
+  scale_fill_manual(name = "", values = c("1" = "blue", "-1" = "red"),
+                    
+  labels = c("-1" = "Zone-2", "1" = "Zone-3")) +
+  theme_minimal()
+
+# Arrange boxplots together
+grid.arrange(svm_boxplot, rf_boxplot, logistic_boxplot, nrow = 3)
+
+
+```
+
+
+<hr style="margin: 40px 0;">
+
+
+### Mann-Whitney test  
+
+<div style="margin-bottom: 30px;"></div>
+
+We Use Mann-Whitney to compare \( S^+ \) vs \( S^- \).  
+
+
+Compute a test statistic \( \hat{t} \):
+
+\[
+\hat{t} = T(S^+, S^-)
+\]
+
+where \( T \) is the test function.<br><br>
+
+
+
+$H_0$: $F_(Zone2)$ = $F_(Zone3)$<br><br>
+$H_1$: $F_(Zone2)$ $\neq$ $F_(Zone3)$<br><br>
+
+If p-value < 0.01, we conclude Zone-2 and Zone-3 are **significantly different**.
+
+
+.
+
+```{r}
+# Perform Mann-Whitney U Test for each model
+mann_whitney_test_svm <- wilcox.test(score_svm_zone2, score_svm_zone3)
+
+mann_whitney_test_rf <- wilcox.test(score_rf_zone2, score_rf_zone3)
+
+mann_whitney_test_logistic <- wilcox.test(score_logistic_zone2, score_logistic_zone3)
+
+mann_list <- list(mann_whitney_test_svm = mann_whitney_test_svm, mann_whitney_test_rf = mann_whitney_test_rf, mann_whitney_test_logistic = mann_whitney_test_logistic)
+
+
+for (i in 1:length(mann_list)){
+  p_value <- mann_list[[names(mann_list)[i]]]$p.value
+  if (p_value < alpha) {
+    cat("\nBased on mann_whitney tests, There is a statistically significant difference between Zone-2 and Zone-3 (",p_value," <", alpha,"). in", names(mann_list)[i],"\n")
+  } else {
+    cat("\nBased on mann_whitney tests, There is no statistically significant difference between Zone-2 and Zone-3 (",p_value," >=", alpha,"). in", names(mann_list)[i],"\n")
+  }
+}
+
+```
+
+<hr style="margin: 40px 0;">
+
+
+### Permutation test for Mann-Whitney
+
+<div style="margin-bottom: 30px;"></div>
+
+$H_0$: Any observed difference between $F_(Zone2)$ & $F_(Zone3)$ is due to **random label assignment**.<br><br>
+
+$H_1$: The observed difference between $F_(Zone2)$ & $F_(Zone3)$ is **statistically significant** and not due to chance.<br><br>
+
+
+
+
+```{r Permutation, cache = TRUE}
+
+# Define a permutation test function for the Mann-Whitney U test
+perform_mann_whitney_permutation <- function(scores1, scores2, num_permutations = B) {
+  # Compute original U-statistic
+  original_test <- wilcox.test(scores1, scores2, exact = FALSE)
+  original_stat <- original_test$statistic
+  
+  permuted_stats <- numeric(num_permutations)  # Store permuted test statistics
+  
+  combined_scores <- c(scores1, scores2)  # Merge both groups
+  
+  for (i in 1:num_permutations) {
+    permuted_labels <- sample(combined_scores)  # Shuffle the combined scores
+    permuted_stats[i] <- wilcox.test(permuted_labels[1:length(scores1)], 
+                                     permuted_labels[(length(scores1) + 1):length(combined_scores)], 
+                                     exact = FALSE)$statistic
+  }
+  
+  # Compute p-value: proportion of permuted test statistics ≥ original test statistic
+  p_value <- mean(permuted_stats >= original_stat)
+  
+  return(list(original_stat = original_stat, permuted_stats = permuted_stats, p_value = p_value))
+}
+
+
+# Apply the permutation test for each classifier
+set.seed(121)
+perm_test_svm <- perform_mann_whitney_permutation(score_svm_zone2, score_svm_zone3)
+
+set.seed(131)
+perm_test_rf <- perform_mann_whitney_permutation(score_rf_zone2, score_rf_zone3)
+
+set.seed(111)
+perm_test_logistic <- perform_mann_whitney_permutation(score_logistic_zone2, score_logistic_zone3)
+
+perm_test_list <- list(perm_test_svm = perm_test_svm,
+                       perm_test_rf = perm_test_rf,
+                       perm_test_logistic = perm_test_logistic)
+
+for (i in 1:length(perm_test_list)){
+  p_value <- perm_test_list[[names(perm_test_list)[i]]]$p_value
+  if (p_value < alpha) {
+    cat("\nBased on permutation tests, There is a statistically significant difference between Zone-2 and Zone-3 (",p_value," <", alpha,"). in", names(perm_test_list)[i],"\n")
+  } else {
+    cat("\nBased on permutation tests, There is no statistically significant difference between Zone-2 and Zone-3 (",p_value," >=", alpha,"). in", names(perm_test_list)[i],"\n")
+  }
+}
+```
+
+
+<div style="margin-bottom: 30px;"></div>
+
+
+### Distribution of U-Statistics  
+
+<div style="margin-bottom: 30px;"></div>
+
+The **blue density** curves represent the distribution of **U-statistics** under the null hypothesis (randomly permuted labels).
+
+The distributions are **centered around lower U-statistics** values, which suggests that the test statistics obtained from the random permutations are **significantly different** from the original U-statistics.  
+
+
+**Original U-Statistic** (**Red Dashed Line**):
+
+The \textcolor{red}{red dashed line} represents the observed U-statistic from the actual Mann-Whitney test.
+
+In all three plots, the observed U-statistic is far to the right, outside the density distribution.
+
+**p-value**:
+
+The \textcolor{darkpink}{p_value} in all cases is 0, meaning that none of the permuted U-statistics reached or exceeded the original U-statistic.
+
+**This indicates strong statistical significance**  
+
+
+The probability of obtaining the observed U-statistic under the null hypothesis is extremely low.
+
+<div style="margin-bottom: 20px;"></div>
+
+
+```{r}
+
+plots <- list()  # Create a list to store the plots
+
+for (name in names(perm_test_list)) {
+  permuted_df <- data.frame(U_Statistic = perm_test_list[[name]]$permuted_stats)
+  original_stat <- perm_test_list[[name]]$original_stat
+  permuted_stats <- perm_test_list[[name]]$permuted_stats
+  p_value <- perm_test_list[[name]]$p_value
+  
+  plots[[name]] <- ggplot(permuted_df, aes(x = U_Statistic)) +
+    geom_density(fill = "blue", alpha = 0.5) +
+    geom_vline(xintercept = original_stat, color = "red", linetype = "dashed", linewidth = 1) +
+    annotate("text", x = original_stat, y = max(density(permuted_stats)$y) * 0.9,
+             label = paste("Original U =", round(original_stat, 2)), color = "red", size = 5, hjust = -0.1) +
+    annotate("text", x = median(permuted_stats), y = max(density(permuted_stats)$y) * 0.8,
+             label = paste("p-value =", round(p_value, 4)), color = "black", size = 5) +
+    labs(title = paste("Permutation Test:", name, "Density of U-Statistics"),  # Dynamic title
+         x = "U-Statistic",
+         y = "Density") +
+    theme_minimal()
+}
+
+grid.arrange(plots$perm_test_svm, plots$perm_test_rf, plots$perm_test_logistic, nrow = 3)
+
+
+
+```
+
+<hr style="margin: 40px 0;">
+
+
+
+### Compute Accuracy, Confusion Matrix, and AUC  
+
+
+Contrasting the ROC Curve with the Score Distribution Plots
+Score Distributions:  
+
+**SVM** appeared to separate Zone-2 and Zone-3 best.  
+
+ROC Curve:  
+
+Random Forest is **slightly better**, but all models perform similarly overall.  
+
+This suggests that SVM was more confident in its classifications, but Random Forest might be slightly more stable across all decision thresholds.
+
+<div style="margin-bottom: 20px;"></div>
+
+```{r, results='asis'}
+# Convert scores to class predictions based on a 0.5 threshold
+test_data$Pred_svm <- ifelse(test_data$Score_svm > 0.5, 1, -1)
+test_data$Pred_rf <- ifelse(test_data$Score_rf > 0.5, 1, -1)
+test_data$Pred_logistic <- ifelse(test_data$Score_logistic > 0.5, 1, -1)
+
+# Compute Confusion Matrices
+conf_matrix_svm <- confusionMatrix(factor(test_data$Pred_svm), factor(test_data$Zone))
+conf_matrix_rf <- confusionMatrix(factor(test_data$Pred_rf), factor(test_data$Zone))
+conf_matrix_logistic <- confusionMatrix(factor(test_data$Pred_logistic), factor(test_data$Zone))
+
+# Compute Accuracy
+accuracy_svm <- sum(test_data$Pred_svm == test_data$Zone) / nrow(test_data)
+accuracy_rf <- sum(test_data$Pred_rf == test_data$Zone) / nrow(test_data)
+accuracy_logistic <- sum(test_data$Pred_logistic == test_data$Zone) / nrow(test_data)
+
+
+# Compute AUC for each classifier
+auc_svm <- roc(test_data$Zone, as.numeric(test_data$Score_svm), levels = c(-1, 1), direction = "<")$auc
+auc_rf <- roc(test_data$Zone, as.numeric(test_data$Score_rf), levels = c(-1, 1), direction = "<")$auc
+auc_logistic <- roc(test_data$Zone, as.numeric(test_data$Score_logistic), levels = c(-1, 1), direction = "<")$auc
+
+# Create a Performance Table
+performance_table <- data.frame(
+  Model = c("SVM", "Random Forest", "Logistic Regression"),
+  Accuracy = c(accuracy_svm, accuracy_rf, accuracy_logistic),
+  AUC = c(auc_svm, auc_rf, auc_logistic)
+)
+
+# Print Performance Table
+kable(performance_table)
+
+
+
+# Compute ROC curves for all classifiers
+roc_svm <- roc(test_data$Zone, test_data$Score_svm, levels = c(-1, 1), direction = "<")
+roc_rf <- roc(test_data$Zone, test_data$Score_rf, levels = c(-1, 1), direction = "<")
+roc_logistic <- roc(test_data$Zone, test_data$Score_logistic, levels = c(-1, 1), direction = "<")
+
+# Plot ROC curves
+plot(roc_svm, col = "blue", lwd = 2, main = "ROC Curves for SVM, Random Forest, and Logistic")
+lines(roc_rf, col = "red", lwd = 2)
+lines(roc_logistic, col = "green", lwd = 2)
+
+# Add legend
+legend("bottomright", legend = c("SVM", "Random Forest", "Logistic Regression"),
+       col = c("blue", "red", "green"), lwd = 2)
+
+
+
+```
+
+
+```{r}
+
+```
+
+
+```{r}
+
+```
+
+
+```{r}
+
+```
+
+
+
+<hr style="margin: 80px 0;">
+
+
+#### Classify Zone-2, Zone-3 & Zone-4
+
+
+<div style="margin-bottom: 30px;"></div>
+
+
+Since we now have three groups, we cannot use the Mann-Whitney U test (which is for two groups). Instead, we use **Kruskal-Wallis Test** (Non-Parametric ANOVA Equivalent)
+
+which Tests whether three or more distributions differ.
+Its a generalization of the Mann-Whitney U test to multiple groups.
+
+
+<div style="margin-bottom: 30px;"></div>
+
+
+### Data Preprocessing
+
+
+<div style="margin-bottom: 20px;"></div>
+
+
+```{r, results='asis'}
+
+B <- 1000 # Number of permutations
+alpha <- 0.01 # Significance level
+
+df3 <- hw
+
+# Define custom colors for each zone
+zone_colors <- c("Zone-2" = "darkblue", "Zone-3" = "darkred", "Zone-4" = "darkgreen")
+
+# Create the bar plot with custom colors
+ggplot(hw, aes(x = y, fill = y)) +  
+  geom_bar(color = "black") + 
+  scale_fill_manual(values = zone_colors) +  
+  labs(title = "Frequency of Zones", 
+       x = "Zone", 
+       y = "Frequency") +
+  theme_minimal(base_size = 12) +
+  theme(legend.position = "top")
+```
+
+<div style="margin-bottom: 30px;"></div>
+
+```{r, Model training part (3 Zones), results='asis', cache = TRUE}
+# Create a named vector for mapping
+zone_mapping <- c("Zone-2" = 1, "Zone-3" = -1, "Zone-4" = 0)
+
+# Use the named vector to assign values
+df3$Zone <- zone_mapping[df3$y]
+df3$Zone <- as.factor(df3$Zone)
+
+# Identify speed and altitude columns
+speed_cols <- grep("^sp\\.", names(hw), value = TRUE)
+altitude_cols <- grep("^al\\.", names(hw), value = TRUE)
+
+# Compute summary statistics
+df3$speed_mean <- rowMeans(df3[speed_cols], na.rm = TRUE)
+df3$speed_sd <- apply(df3[speed_cols], 1, sd, na.rm = TRUE)
+df3$speed_min <- apply(df3[speed_cols], 1, min, na.rm = TRUE)
+df3$speed_max <- apply(df3[speed_cols], 1, max, na.rm = TRUE)
+df3$speed_range <- df3$speed_max - df3$speed_min
+
+df3$altitude_mean <- rowMeans(df3[altitude_cols], na.rm = TRUE)
+df3$altitude_sd <- apply(df3[altitude_cols], 1, sd, na.rm = TRUE)
+df3$altitude_min <- apply(df3[altitude_cols], 1, min, na.rm = TRUE)
+df3$altitude_max <- apply(df3[altitude_cols], 1, max, na.rm = TRUE)
+df3$altitude_range <- df3$altitude_max - df3$altitude_min
+
+# 3Select only necessary columns
+df3 <- df3[, c("Zone", "speed_mean", "speed_sd", "speed_min", "speed_max", "speed_range",
+               "altitude_mean", "altitude_sd", "altitude_min", "altitude_max", "altitude_range")]
+
+# Display first few rows
+kable(head(df3))
+
+# Split dataset into training (70%) and testing (30%)
+set.seed(131)
+train_index <- sample(1:nrow(df3), 0.7 * nrow(df3))
+train_data <- df3[train_index, ]
+test_data <- df3[-train_index, ]
+
+# Train SVM Model
+svm_model <- svm(Zone ~ ., data = train_data, kernel = "radial", probability = TRUE)
+
+# Train Random Forest Model
+rf_model <- randomForest(Zone ~ ., data = train_data, ntree = 100)
+
+# Train Logistic Regression Model
+logistic_model <- invisible(multinom(Zone ~ ., data = train_data))  # Multinomial Logistic Regression
+
+```
+
+<hr style="margin: 40px 0;">
+
+### Model Predictions
+
+<div style="margin-bottom: 20px;"></div>
+
+
+```{r Models (3 Zones), results='asis', cache = TRUE}
+# Predict with SVM
+svm_predictions <- predict(svm_model, test_data, probability = TRUE)
+svm_probabilities <- attr(svm_predictions, "probabilities")
+
+# Predict with Random Forest
+rf_predictions <- predict(rf_model, test_data, type = "prob")
+
+# Predict with Multinomial Logistic Regression
+logistic_probs <- predict(logistic_model, test_data, type = "probs")
+
+# Attach all class probabilities to the test dataset
+test_data$Score_svm_Zone2 <- svm_probabilities[, "1"]
+test_data$Score_svm_Zone3 <- svm_probabilities[, "-1"]
+test_data$Score_svm_Zone4 <- svm_probabilities[, "0"]
+
+test_data$Score_rf_Zone2 <- rf_predictions[, "1"]
+test_data$Score_rf_Zone3 <- rf_predictions[, "-1"]
+test_data$Score_rf_Zone4 <- rf_predictions[, "0"]
+
+test_data$Score_logistic_Zone2 <- logistic_probs[, "1"]
+test_data$Score_logistic_Zone3 <- logistic_probs[, "-1"]
+test_data$Score_logistic_Zone4 <- logistic_probs[, "0"]
+
+# Display first few rows with scores for all three classes
+kable(head(test_data))
+
+
+
+```
+
+<hr style="margin: 40px 0;">
+
+
+### Density plots of Score Distributions
+
+**SVM** and **Logistic Regression** have similar patterns, strongly differentiating Zone-3 with high scores.
+
+**Random Forest** has a smoother distribution, suggesting it is more uncertain across zones.
+
+Zones 2 & 4 tend to have low scores across all models, meaning the classifiers generally associate them with lower probability predictions.
+
+<div style="margin-bottom: 20px;"></div>
+
+```{r}
+# SVM Score Distribution
+svm_plot <- ggplot() +
+  geom_density(aes(x = test_data$Score_svm_Zone2, fill = "Zone-2"), alpha = 0.4) +
+  geom_density(aes(x = test_data$Score_svm_Zone3, fill = "Zone-3"), alpha = 0.4) +
+  geom_density(aes(x = test_data$Score_svm_Zone4, fill = "Zone-4"), alpha = 0.4) +
+  scale_fill_manual(name = "", values = c("Zone-2" = "blue", "Zone-3" = "red", "Zone-4" = "green")) +
+  labs(title = "SVM Score Distributions", x = "Score", y = "Density") +
+  theme_minimal()
+
+# Random Forest Score Distribution
+rf_plot <- ggplot() +
+  geom_density(aes(x = test_data$Score_rf_Zone2, fill = "Zone-2"), alpha = 0.4) +
+  geom_density(aes(x = test_data$Score_rf_Zone3, fill = "Zone-3"), alpha = 0.4) +
+  geom_density(aes(x = test_data$Score_rf_Zone4, fill = "Zone-4"), alpha = 0.4) +
+  scale_fill_manual(name = "", values = c("Zone-2" = "blue", "Zone-3" = "red", "Zone-4" = "green")) +
+  labs(title = "Random Forest Score Distributions", x = "Score", y = "Density") +
+  theme_minimal()
+
+# Logistic Regression Score Distribution
+logistic_plot <- ggplot() +
+  geom_density(aes(x = test_data$Score_logistic_Zone2, fill = "Zone-2"), alpha = 0.4) +
+  geom_density(aes(x = test_data$Score_logistic_Zone3, fill = "Zone-3"), alpha = 0.4) +
+  geom_density(aes(x = test_data$Score_logistic_Zone4, fill = "Zone-4"), alpha = 0.4) +
+  scale_fill_manual(name = "", values = c("Zone-2" = "blue", "Zone-3" = "red", "Zone-4" = "green")) +
+  labs(title = "Logistic Regression Score Distributions", x = "Score", y = "Density") +
+  theme_minimal()
+
+# Arrange plots together
+grid.arrange(svm_plot, rf_plot, logistic_plot, nrow = 3)
+
+```
+
+
+<div style="margin-bottom: 20px;"></div>
+
+
+
+#### Kruskal-Wallis Test
+
+<div style="margin-bottom: 30px;"></div>
+
+
+$H_0$: $F_(Zone2)$ = $F_(Zone3)$ = $F_(Zone4)$<br><br>
+$H_1$: $F_(Zone2)$ $\neq$ $F_(Zone3)$ $\neq$ $F_(Zone4)$<br><br>
+
+If p-value < 0.01, we conclude 3 Zones are **significantly different**.
+
+<div style="margin-bottom: 30px;"></div>
+
+
+```{r}
+# Kruskal-Wallis Test for SVM scores
+kruskal_test_svm <- kruskal.test(
+  list(test_data$Score_svm_Zone2, test_data$Score_svm_Zone3, test_data$Score_svm_Zone4)
+)
+
+# Kruskal-Wallis Test for Random Forest scores
+kruskal_test_rf <- kruskal.test(
+  list(test_data$Score_rf_Zone2, test_data$Score_rf_Zone3, test_data$Score_rf_Zone4)
+)
+
+
+# Kruskal-Wallis Test for Logistic Regression scores
+kruskal_test_logistic <- kruskal.test(
+  list(test_data$Score_logistic_Zone2, test_data$Score_logistic_Zone3, test_data$Score_logistic_Zone4)
+)
+
+kruskal_list <- list(kruskal_test_svm = kruskal_test_svm,
+                     kruskal_test_rf = kruskal_test_rf,
+                     kruskal_test_logistic = kruskal_test_logistic)
+
+for (i in 1:length(kruskal_list)){
+  p_value <- kruskal_list[[names(kruskal_list)[i]]]$p.value
+  if (p_value < alpha) {
+    cat("Based on ",names(kruskal_list)[i]," classifier There is a statistically significant difference between Zones (", p_value, "<", alpha,").")
+  } else {
+      cat("Based on ",names(kruskal_list)[i]," classifier There is no statistically           significant difference between Zones (", p_value, ">=", alpha,").")
+  }
+}
+
+```
+
+<hr style="margin: 40px 0;">
+
+
+### Box plots for each classifier
+
+<div style="margin-bottom: 20px;"></div>
+
+
+```{r}
+# Boxplot for SVM Scores
+svm_plot <- ggplot(test_data, aes(x = Zone, y = Score_svm_Zone2, fill = Zone)) +
+  geom_boxplot(alpha = 0.7) +
+  labs(title = "Kruskal-Wallis: SVM Score Distributions", x = "Zone", y = "Score") +
+  scale_fill_manual(values = c("-1" = "blue", "1" = "red", "0" = "green"),
+                    labels = c("-1" = "Zone-2", "1" = "Zone-3", "0" = "Zone-4")) +
+  theme_minimal()
+
+# Boxplot for Random Forest Scores
+rf_plot <- ggplot(test_data, aes(x = Zone, y = Score_rf_Zone2, fill = Zone)) +
+  geom_boxplot(alpha = 0.7) +
+  labs(title = "Kruskal-Wallis: Random Forest Score Distributions", x = "Zone", y = "Score") +
+  scale_fill_manual(values = c("-1" = "blue", "1" = "red", "0" = "green"),
+                    labels = c("-1" = "Zone-2", "1" = "Zone-3", "0" = "Zone-4")) +
+  theme_minimal()
+
+# Boxplot for Logistic Regression Scores
+logistic_plot <- ggplot(test_data, aes(x = Zone, y = Score_logistic_Zone2, fill = Zone)) +
+  geom_boxplot(alpha = 0.7) +
+  labs(title = "Kruskal-Wallis: Logistic Regression Score Distributions", x = "Zone", y = "Score") +
+  scale_fill_manual(values = c("-1" = "blue", "1" = "red", "0" = "green"),
+                    labels = c("-1" = "Zone-2", "1" = "Zone-3", "0" = "Zone-4")) +
+  theme_minimal()
+
+# Arrange plots together
+grid.arrange(svm_plot, rf_plot, logistic_plot, nrow = 3)
+
+```
+
+
+<hr style="margin: 40px 0;">
+
+
+### Permutation test for Kruskal-Wallis
+
+$H_0$: Any observed difference among 3 Zones is due to **random label assignment**<br><br>
+
+$H_1$: The observed difference among 3 Zones is **statistically significant** and not due to chance.
+
+<div style="margin-bottom: 30px;"></div>
+
+
+```{r Permutation (3 Zones), cache = TRUE}
+# Function to perform permutation test for Kruskal-Wallis
+perm_test_kruskal <- function(zone1, zone2, zone3, num_permutations = B) {
+  
+  # Compute observed Kruskal-Wallis statistic
+  observed_stat <- kruskal.test(list(zone1, zone2, zone3))$statistic
+  
+  # Initialize vector for permuted statistics
+  perm_stats <- numeric(num_permutations)
+  
+  # Combine all scores into a single vector
+  all_scores <- c(zone1, zone2, zone3)
+  
+  # Labels for original grouping
+  group_sizes <- c(length(zone1), length(zone2), length(zone3))
+  
+  # Permutation loop
+  for (i in 1:num_permutations) {
+    permuted_scores <- sample(all_scores)  # Shuffle all values
+    perm_test <- kruskal.test(list(
+      permuted_scores[1:group_sizes[1]], 
+      permuted_scores[(group_sizes[1] + 1):(sum(group_sizes[1:2]))], 
+      permuted_scores[(sum(group_sizes[1:2]) + 1):sum(group_sizes)]
+    ))
+    
+    perm_stats[i] <- perm_test$statistic
+  }
+  
+  # Compute p-value
+  p_value <- mean(perm_stats >= observed_stat)
+  
+  # Return a list with all results
+  return(list(original_stat = observed_stat, permuted_stats = perm_stats, p_value = p_value))
+}
+
+
+# Apply permutation test to each classifier
+perm_test_svm <- perm_test_kruskal(
+  test_data$Score_svm_Zone2, 
+  test_data$Score_svm_Zone3, 
+  test_data$Score_svm_Zone4
+)
+
+perm_test_rf <- perm_test_kruskal(
+  test_data$Score_rf_Zone2, 
+  test_data$Score_rf_Zone3, 
+  test_data$Score_rf_Zone4
+)
+
+perm_test_logistic <- perm_test_kruskal(
+  test_data$Score_logistic_Zone2, 
+  test_data$Score_logistic_Zone3, 
+  test_data$Score_logistic_Zone4
+)
+
+# Store results in a list
+perm_test_results <- list(
+  perm_test_svm = perm_test_svm,
+  perm_test_rf = perm_test_rf,
+  perm_test_logistic = perm_test_logistic
+)
+
+for (i in 1:length(perm_test_list)){
+  p_value <- perm_test_list[[names(perm_test_list)[i]]]$p_value
+  if (p_value < alpha) {
+    cat("\nBased on permutation tests, There is a statistically significant difference between 3 Zones (",p_value," <", alpha,"). in", names(perm_test_list)[i],"\n")
+  } else {
+    cat("\nBased on permutation tests, There is no statistically significant difference between 3 Zones (",p_value," >=", alpha,"). in", names(perm_test_list)[i],"\n")
+  }
+}
+
+```
+
+<div style="margin-bottom: 30px;"></div>
+
+
+### Distribution of U-Statistics  
+
+
+The **blue density** curves represent the distribution of **U-statistics** under the null hypothesis (randomly permuted labels).
+
+The distributions are **centered around lower U-statistics** values, which suggests that the test statistics obtained from the random permutations are **significantly different** from the original U-statistics.  
+
+
+**Original U-Statistic** (**Red Dashed Line**):
+
+The \textcolor{red}{red dashed line} represents the observed U-statistic from the actual Mann-Whitney test.
+
+In all three plots, the observed U-statistic is far to the right, outside the density distribution.
+
+**p-value**:
+
+The \textcolor{darkpink}{p_value} in all cases is 0, meaning that none of the permuted U-statistics reached or exceeded the original U-statistic.
+
+**This indicates strong statistical significance**  
+
+
+The probability of obtaining the observed U-statistic under the null hypothesis is extremely low.
+
+
+```{r}
+
+plots <- list()  # Create a list to store the plots
+
+for (name in names(perm_test_list)) {
+  permuted_df <- data.frame(U_Statistic = perm_test_list[[name]]$permuted_stats)
+  original_stat <- perm_test_list[[name]]$original_stat
+  permuted_stats <- perm_test_list[[name]]$permuted_stats
+  p_value <- perm_test_list[[name]]$p_value
+  
+  plots[[name]] <- ggplot(permuted_df, aes(x = U_Statistic)) +
+    geom_density(fill = "blue", alpha = 0.5) +
+    geom_vline(xintercept = original_stat, color = "red", linetype = "dashed", linewidth = 1) +
+    annotate("text", x = original_stat, y = max(density(permuted_stats)$y) * 0.9,
+             label = paste("Original U =", round(original_stat, 2)), color = "red", size = 5, hjust = -0.1) +
+    annotate("text", x = median(permuted_stats), y = max(density(permuted_stats)$y) * 0.8,
+             label = paste("p-value =", round(p_value, 4)), color = "black", size = 5) +
+    labs(title = paste("Permutation Test for 3 Zones:", name, "Density of U-Statistics"),  # Dynamic title
+         x = "U-Statistic",
+         y = "Density") +
+    theme_minimal()
+}
+
+grid.arrange(plots$perm_test_svm, plots$perm_test_rf, plots$perm_test_logistic, nrow = 3)
+
+```
+
+<hr style="margin: 40px 0;">
+
+
+### Evaluate performance of each classifier (3 Zones)
+
+We are going to use **Multi-Class ROC Curves (One vs. Rest)** for three different classification models: SVM, random forest and logistic regression.
+
+<div style="margin-bottom: 30px;"></div>
+
+
+```{r, results='asis'}
+# choose the class with the highest probability
+test_data$Pred_svm <- apply(test_data[, c("Score_svm_Zone2", "Score_svm_Zone3", "Score_svm_Zone4")], 1, which.max)
+test_data$Pred_rf <- apply(test_data[, c("Score_rf_Zone2", "Score_rf_Zone3", "Score_rf_Zone4")], 1, which.max)
+test_data$Pred_logistic <- apply(test_data[, c("Score_logistic_Zone2", "Score_logistic_Zone3", "Score_logistic_Zone4")], 1, which.max)
+
+# AUC Calculation for Multi-Class
+
+# True labels of 3 Zones
+true_labels <- test_data$Zone
+
+levels(true_labels) <- c("Zone2", "Zone3", "Zone4")
+
+# SVM scores
+scores_svm <- data.frame(
+  Zone2 = test_data$Score_svm_Zone2,
+  Zone3 = test_data$Score_svm_Zone3,
+  Zone4 = test_data$Score_svm_Zone4
+)
+
+# Random Forest scores
+scores_rf <- data.frame(
+  Zone2 = test_data$Score_rf_Zone2,
+  Zone3 = test_data$Score_rf_Zone3,
+  Zone4 = test_data$Score_rf_Zone4
+)
+
+# Logistic scores
+scores_logistic <- data.frame(
+  Zone2 = test_data$Score_logistic_Zone2,
+  Zone3 = test_data$Score_logistic_Zone3,
+  Zone4 = test_data$Score_logistic_Zone4
+)
+
+# Ensure column names match the levels of true_labels
+colnames(scores_svm) <- levels(true_labels)
+colnames(scores_rf) <- levels(true_labels)
+colnames(scores_logistic) <- levels(true_labels)
+
+# Calculate multiclass AUC for each classifier
+auc_svm <- multiclass.roc(true_labels, as.matrix(scores_svm))$auc
+auc_rf <- multiclass.roc(true_labels, as.matrix(scores_rf))$auc
+auc_logistic <- multiclass.roc(true_labels, as.matrix(scores_logistic))$auc
+
+# Function to calculate accuracy and confusion matrix
+evaluate_model <- function(true_labels, scores, model_name) {
+  # Get predicted classes (class with the highest score)
+  predicted_classes <- colnames(scores)[max.col(scores)]
+  predicted_classes <- factor(predicted_classes, levels = levels(true_labels))
+  
+  # Calculate accuracy
+  accuracy <- mean(predicted_classes == true_labels)
+  
+  # Compute confusion matrix
+  confusion_matrix <- table(Predicted = predicted_classes, Actual = true_labels)
+  
+  return(list(accuracy = accuracy, confusion_matrix = confusion_matrix))
+}
+
+svm_accuracy <- evaluate_model(true_labels, scores_svm, "SVM")$accuracy
+rf_accuracy <- evaluate_model(true_labels, scores_rf, "Random Forest")$accuracy
+logistic_accuracy <- evaluate_model(true_labels, scores_logistic, "Logistic Regression")$accuracy
+
+# Create a Performance Table
+performance_table <- data.frame(
+  Model = c("SVM", "Random Forest", "Logistic"),
+  Accuracy = c(svm_accuracy, rf_accuracy, logistic_accuracy),
+  AUC = c(auc_svm, auc_rf, auc_logistic)
+)
+
+# Print Performance Table
+kable(performance_table)
+
+
+# ROC Curves
+create_roc_data <- function(true_labels, scores, class_name) {
+  binary_labels <- ifelse(true_labels == class_name, 1, 0)
+  class_scores <- scores[[class_name]]
+  roc_obj <- roc(binary_labels, class_scores)
+  roc_data <- data.frame(
+    FPR = roc_obj$specificities,
+    TPR = roc_obj$sensitivities,
+    Class = class_name
+  )
+  return(roc_data)
+}
+
+roc_data_list <- list()
+
+for (model_name in c("svm", "rf", "logistic")) {
+  scores <- switch(model_name,
+                   svm = scores_svm,
+                   rf = scores_rf,
+                   logistic = scores_logistic)
+  
+  for (class_name in levels(true_labels)) {
+    roc_data <- create_roc_data(true_labels, scores, class_name)
+    roc_data$Model <- model_name
+    roc_data_list <- append(roc_data_list, list(roc_data))
+  }
+}
+
+all_roc_data <- do.call(rbind, roc_data_list)
+
+roc_plot <- ggplot(all_roc_data, aes(x = FPR, y = TPR, color = Class)) +
+  geom_line(linewidth = 1) +
+  geom_abline(intercept = 0, slope = 1, linetype = "dashed") +
+  facet_wrap(~ Model) +
+  labs(title = "Multi-Class ROC Curves (One vs. Rest)",
+       x = "False Positive Rate (1 - Specificity)",
+       y = "True Positive Rate (Sensitivity)") +
+  theme_bw() +
+  theme(legend.position = "bottom") +
+  coord_equal()
+
+print(roc_plot)
+
+
+```
+
+In conclusion, SVM has the best overall performance among all 3 classifiers in terms of Accuracy, AUC and even Score distributions for both parts (Binary and multi-class)
+
+Moreover we can not rely on this method for multi-classes because of low performance over all classifiers.
+
+
+
+<hr style="margin: 40px 0;">
+
+```{r}
+
+```
+
